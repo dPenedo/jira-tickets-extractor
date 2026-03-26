@@ -2,7 +2,7 @@ import sys
 
 import requests
 
-from config import JIRA_EMAIL, JIRA_TOKEN
+from config import JIRA_DOMAIN, JIRA_EMAIL, JIRA_TOKEN
 
 
 def fetch_issue(domain: str, ticket_key: str) -> dict:
@@ -16,3 +16,10 @@ def fetch_issue(domain: str, ticket_key: str) -> dict:
         print(f"Error {response.status_code}:", response.text)
         sys.exit(1)
     return response.json()["fields"]
+
+
+def fetch_status(ticket_key: str) -> str:
+    if not JIRA_DOMAIN:
+        raise ValueError("JIRA_DOMAIN required in .env for --archive")
+    fields = fetch_issue(JIRA_DOMAIN, ticket_key)
+    return fields["status"]["name"]

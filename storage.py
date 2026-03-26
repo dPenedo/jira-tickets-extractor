@@ -1,7 +1,11 @@
+import re
 import subprocess
 from pathlib import Path
 
-from config import REPOS_DIR, TICKETS_DIR
+from config import REPOS_DIR, TASKS_FILE, TICKETS_DIR
+
+DONE_STATUSES = {"done", "closed", "resolved"}
+PREV_TICKETS_DIR = TICKETS_DIR.parent / "prev-tickets"
 
 
 def save_ticket(markdown: str, ticket_key: str) -> Path:
@@ -12,6 +16,100 @@ def save_ticket(markdown: str, ticket_key: str) -> Path:
     out_file.write_text(markdown, encoding="utf-8")
     print(f"Saved: {out_file}")
     return out_file
+
+
+def ticket_path(ticket_key: str) -> Path:
+    project_key = ticket_key.split("-")[0]
+    return TICKETS_DIR / project_key / f"{ticket_key}.md"
+
+
+def append_task_checkbox(ticket_key: str, title: str, ticket_file: Path | None = None):
+    if not TASKS_FILE:
+        print("TASKS_FILE not set in .env, skipping task append.")
+        return
+    tasks_path = Path(str(TASKS_FILE).replace("~", str(Path.home())))
+    tasks_path.parent.mkdir(parents=True, exist_ok=True)
+
+    resolved_path = (ticket_file or ticket_path(ticket_key)).resolve()
+    entry = f"- [ ] [{ticket_key} — {title}]({resolved_path})\n"
+    project_key = ticket_key.split("-")[0]
+    section_header = f"## {project_key}"
+
+    if not tasks_path.exists():
+        tasks_path.write_text(f"{section_header}\n\n{entry}", encoding="utf-8")
+        print(f"Task added to {tasks_path}")
+        return
+
+    lines = tasks_path.read_text(encoding="utf-8").splitlines(keepends=True)
+
+    # Find the target section and insert before the next section or EOF
+    section_start = None
+    insert_at = None
+    for i, line in enumerate(lines):
+        if line.strip() == section_header or line.strip().startswith(section_header + " "):
+            section_start = i
+        elif section_start is not None and line.startswith("## "):
+            insert_at = i
+            break
+
+    if section_start is None:
+        # Section doesn't exist — append it at the end
+        if lines and not lines[-1].endswith("\n"):
+            lines.append("\n")
+        lines.append(f"\n{section_header}\n\n{entry}")
+    else:
+        if insert_at is None:
+            insert_at = len(lines)
+        # Insert before trailing blank lines of the section
+        while insert_at > section_start and lines[insert_at - 1].strip() == "":
+            insert_at -= 1
+        lines.insert(insert_at, entry)
+
+    tasks_path.write_text("".join(lines), encoding="utf-8")
+    print(f"Task added to {tasks_path}")
+
+
+def archive_tickets():
+    from jira import fetch_status
+
+    if not TICKETS_DIR.exists():
+        print("Tickets directory not found.")
+        return
+
+    index_path = TICKETS_DIR / "INDEX.md"
+    archived_keys = []
+
+    for project_dir in sorted(TICKETS_DIR.iterdir()):
+        if not project_dir.is_dir():
+            continue
+        project_key = project_dir.name
+
+        for ticket_file in sorted(project_dir.glob("*.md")):
+            if not re.fullmatch(r"[A-Z]+-\d+", ticket_file.stem):
+                continue
+            ticket_key = ticket_file.stem
+
+            status = fetch_status(ticket_key)
+            if status.lower() not in DONE_STATUSES:
+                continue
+
+            dest_dir = PREV_TICKETS_DIR / project_key
+            dest_dir.mkdir(parents=True, exist_ok=True)
+
+            files_to_move = [ticket_file] + sorted(project_dir.glob(f"{ticket_key}-*.md"))
+            for f in files_to_move:
+                f.rename(dest_dir / f.name)
+                print(f"Archived: {f.name}")
+            archived_keys.append(ticket_key)
+
+    if archived_keys and index_path.exists():
+        lines = index_path.read_text(encoding="utf-8").splitlines(keepends=True)
+        filtered = [l for l in lines if not any(key in l for key in archived_keys)]
+        index_path.write_text("".join(filtered), encoding="utf-8")
+        print(f"Updated INDEX.md: removed {len(archived_keys)} entr{'y' if len(archived_keys) == 1 else 'ies'}")
+
+    if not archived_keys:
+        print("No tickets to archive.")
 
 
 def link_as_task(out_file: Path):

@@ -30,6 +30,7 @@ JIRA_EMAIL=you@example.com
 JIRA_TOKEN=your_atlassian_api_token
 TICKETS_DIR=/path/to/your/tickets
 REPOS_DIR=/path/to/your/repos
+TASKS_FILE=~/path/to/tasks.md
 ```
 
 You can generate an API token at [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens).
@@ -80,17 +81,30 @@ Each ticket is saved as a markdown file with front matter-style metadata followe
 
 Jira's Atlassian Document Format (ADF) is parsed and converted to proper markdown, including headings, lists, nested lists, code blocks, blockquotes, and inline formatting.
 
-## The `-t` flag
+## The `-T` flag
 
 ```bash
-python main.py -u https://your-domain.atlassian.net/browse/PROJ-123 -t
+python main.py -u https://your-domain.atlassian.net/browse/PROJ-123 -T
 ```
 
 After saving the ticket, an `fzf` picker opens over your `REPOS_DIR`. Select a repo and `TASK.md` is created there as a symlink pointing to the saved ticket file. If a `TASK.md` already exists, it gets backed up as `TASK.md.bak` first.
 
 If you work on AI coding tools this is 🔥 — drop any ticket directly into your repo context with one command and your AI assistant has everything it needs.
 
+## The `-A` flag
+
+```bash
+python main.py -u https://your-domain.atlassian.net/browse/PROJ-123 -A
+```
+
+Appends a checkbox task entry to the file defined in `TASKS_FILE`:
+
+```markdown
+- [ ] [PROJ-123 - Ticket title here](/path/to/tickets/PROJ/PROJ-123.md)
+```
+
+The entry is added at the end of the file. Set `TASKS_FILE` in your `.env` to the path of your markdown task list (e.g. `~/Documentos/repos/myproject/tasks.md`). The file and its parent directories are created automatically if they don't exist.
+
 ## License
 
 MIT
-# jira-tickets-extractor
