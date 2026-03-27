@@ -31,6 +31,12 @@ JIRA_TOKEN=your_atlassian_api_token
 TICKETS_DIR=/path/to/your/tickets
 REPOS_DIR=/path/to/your/repos
 TASKS_FILE=~/path/to/tasks.md
+
+# Filename format: "minimal" (CON-32.md) or "full" (CON-32_My-Ticket-Title.md)
+FILENAME_FORMAT=minimal
+
+# Link format for checklist entries: "markdown" or "wikilink"
+LINK_FORMAT=markdown
 ```
 
 You can generate an API token at [id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens).
@@ -41,7 +47,10 @@ You can generate an API token at [id.atlassian.com/manage-profile/security/api-t
 python main.py -u https://your-domain.atlassian.net/browse/PROJ-123
 ```
 
-The ticket is saved as `{TICKETS_DIR}/{PROJECT}/PROJ-123.md`.
+The ticket is saved under `{TICKETS_DIR}/{PROJECT}/`. The filename depends on `FILENAME_FORMAT`:
+
+- `minimal` (default): `PROJ-123.md`
+- `full`: `PROJ-123_My-Ticket-Title.md`
 
 ### Batch extraction
 
@@ -97,11 +106,19 @@ If you work on AI coding tools this is 🔥 — drop any ticket directly into yo
 python main.py -u https://your-domain.atlassian.net/browse/PROJ-123 -A
 ```
 
-Appends a checkbox task entry to the file defined in `TASKS_FILE`:
+Appends a checkbox task entry to the file defined in `TASKS_FILE`. The link format depends on `LINK_FORMAT`:
 
+**`markdown`** (default):
 ```markdown
-- [ ] [PROJ-123 - Ticket title here](/path/to/tickets/PROJ/PROJ-123.md)
+- [ ] [PROJ-123 — Ticket title here](/path/to/tickets/PROJ/PROJ-123.md)
 ```
+
+**`wikilink`**:
+```markdown
+- [ ] [[PROJ-123]]
+```
+
+With `FILENAME_FORMAT=full` and `LINK_FORMAT=wikilink` the wikilink includes the full slug: `[[PROJ-123_My-Ticket-Title]]`.
 
 The entry is added at the end of the file. Set `TASKS_FILE` in your `.env` to the path of your markdown task list (e.g. `~/Documentos/repos/myproject/tasks.md`). The file and its parent directories are created automatically if they don't exist.
 

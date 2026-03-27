@@ -2,25 +2,50 @@ import re
 import subprocess
 from pathlib import Path
 
-from config import REPOS_DIR, TASKS_FILE, TICKETS_DIR
+from config import FILENAME_FORMAT, LINK_FORMAT, REPOS_DIR, TASKS_FILE, TICKETS_DIR
 
 DONE_STATUSES = {"done", "closed", "resolved"}
 PREV_TICKETS_DIR = TICKETS_DIR.parent / "prev-tickets"
 
 
-def save_ticket(markdown: str, ticket_key: str) -> Path:
+def _slugify(text: str) -> str:
+    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r"[\s_]+", "-", text.strip())
+    return text.strip("-")
+
+
+def _filename_stem(ticket_key: str, title: str = "") -> str:
+    if FILENAME_FORMAT == "full" and title:
+        return f"{ticket_key}_{_slugify(title)}"
+    return ticket_key
+
+
+def save_ticket(markdown: str, ticket_key: str, title: str = "") -> Path:
     project_key = ticket_key.split("-")[0]
     out_dir = TICKETS_DIR / project_key
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_file = out_dir / f"{ticket_key}.md"
+    out_file = out_dir / f"{_filename_stem(ticket_key, title)}.md"
     out_file.write_text(markdown, encoding="utf-8")
     print(f"Saved: {out_file}")
     return out_file
 
 
-def ticket_path(ticket_key: str) -> Path:
+def ticket_path(ticket_key: str, title: str = "") -> Path:
     project_key = ticket_key.split("-")[0]
-    return TICKETS_DIR / project_key / f"{ticket_key}.md"
+    out_dir = TICKETS_DIR / project_key
+    if FILENAME_FORMAT == "full":
+        existing = sorted(out_dir.glob(f"{ticket_key}_*.md"))
+        if existing:
+            return existing[0]
+    return out_dir / f"{_filename_stem(ticket_key, title)}.md"
+
+
+def _format_link(ticket_key: str, title: str, ticket_file: Path | None) -> str:
+    path = ticket_file or ticket_path(ticket_key, title)
+    if LINK_FORMAT == "wikilink":
+        return f"[[{path.stem}]]"
+    resolved = path.resolve()
+    return f"[{ticket_key} — {title}]({resolved})"
 
 
 def append_task_checkbox(ticket_key: str, title: str, ticket_file: Path | None = None):
@@ -30,8 +55,7 @@ def append_task_checkbox(ticket_key: str, title: str, ticket_file: Path | None =
     tasks_path = Path(str(TASKS_FILE).replace("~", str(Path.home())))
     tasks_path.parent.mkdir(parents=True, exist_ok=True)
 
-    resolved_path = (ticket_file or ticket_path(ticket_key)).resolve()
-    entry = f"- [ ] [{ticket_key} — {title}]({resolved_path})\n"
+    entry = f"- [ ] {_format_link(ticket_key, title, ticket_file)}\n"
     project_key = ticket_key.split("-")[0]
     section_header = f"## {project_key}"
 
@@ -85,9 +109,10 @@ def archive_tickets():
         project_key = project_dir.name
 
         for ticket_file in sorted(project_dir.glob("*.md")):
-            if not re.fullmatch(r"[A-Z]+-\d+", ticket_file.stem):
+            m = re.match(r"^([A-Z]+-\d+)", ticket_file.stem)
+            if not m:
                 continue
-            ticket_key = ticket_file.stem
+            ticket_key = m.group(1)
 
             status = fetch_status(ticket_key)
             if status.lower() not in DONE_STATUSES:

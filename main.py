@@ -64,18 +64,18 @@ def main():
     save = args.t or args.a or not (args.T or args.A)
     if save:
         markdown = build_markdown(ticket_key, args.url, fields)
-        out_file = save_ticket(markdown, ticket_key)
+        out_file = save_ticket(markdown, ticket_key, title)
     else:
         out_file = None
 
     if args.t or args.T:
-        link_as_task(out_file or ticket_path(ticket_key))
+        link_as_task(out_file or ticket_path(ticket_key, title))
 
     if args.a:
         append_task_checkbox(ticket_key, title, out_file)
 
     if args.A:
-        expected = ticket_path(ticket_key)
+        expected = ticket_path(ticket_key, title)
         if expected.exists():
             append_task_checkbox(ticket_key, title, expected)
         else:
@@ -83,7 +83,7 @@ def main():
             if answer == "y":
                 if out_file is None:
                     markdown = build_markdown(ticket_key, args.url, fields)
-                    out_file = save_ticket(markdown, ticket_key)
+                    out_file = save_ticket(markdown, ticket_key, title)
                 append_task_checkbox(ticket_key, title, out_file)
             else:
                 append_task_checkbox(ticket_key, title)
