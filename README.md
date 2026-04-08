@@ -109,18 +109,20 @@ python main.py -u https://your-domain.atlassian.net/browse/PROJ-123 -A
 Appends a checkbox task entry to the file defined in `TASKS_FILE`. The link format depends on `LINK_FORMAT`:
 
 **`markdown`** (default):
+
 ```markdown
 - [ ] [PROJ-123 — Ticket title here](/path/to/tickets/PROJ/PROJ-123.md)
 ```
 
 **`wikilink`**:
+
 ```markdown
 - [ ] [[PROJ-123]]
 ```
 
 With `FILENAME_FORMAT=full` and `LINK_FORMAT=wikilink` the wikilink includes the full slug: `[[PROJ-123_My-Ticket-Title]]`.
 
-The entry is added at the end of the file. Set `TASKS_FILE` in your `.env` to the path of your markdown task list (e.g. `~/Documentos/repos/myproject/tasks.md`). The file and its parent directories are created automatically if they don't exist.
+The entry is added at the end of the file. Set `TASKS_FILE` in your `.env` to the path of your markdown task list (e.g. `~/repos/myproject/tasks.md`). The file and its parent directories are created automatically if they don't exist.
 
 ## License
 
